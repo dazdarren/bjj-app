@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Gym {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  email     String
+  phone     String?
+  address   String?
+  
+  // Subscription details
+  stripeCustomerId   String?
+  subscriptionTier   SubscriptionTier @default(STARTER)
+  subscriptionStatus String           @default("active")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  members    Member[]
+  coaches    Coach[]
+  classes    Class[]
+  attendance Attendance[]
+  bills      Bill[]
+  
+  @@map("gyms")
+}
+
+model Coach {
+  id     String @id @default(cuid())
+  gymId  String
+  userId String @unique // Clerk user ID
+  
+  name  String
+  email String
+  phone String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  gym     Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  classes Class[]
+  
+  @@map("coaches")
+}
+
+model Member {
+  id    String @id @default(cuid())
+  gymId String
+  
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  
+  // Jiu-Jitsu specific
+  belt       Belt   @default(WHITE)
+  stripes    Int    @default(0)
+  startDate  DateTime @default(now())
+  isActive   Boolean  @default(true)
+  
+  // Emergency contact
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  gym        Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+  
+  @@unique([gymId, email])
+  @@map("members")
+}
+
+model Class {
+  id      String @id @default(cuid())
+  gymId   String
+  coachId String
+  
+  name        String
+  description String?
+  dayOfWeek   Int // 0 = Sunday, 1 = Monday, etc.
+  startTime   String // "18:30"
+  endTime     String // "19:30"
+  maxStudents Int?
+  
+  isActive Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  gym        Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  coach      Coach        @relation(fields: [coachId], references: [id])
+  attendance Attendance[]
+  
+  @@map("classes")
+}
+
+model Attendance {
+  id       String @id @default(cuid())
+  gymId    String
+  memberId String
+  classId  String
+  
+  date      DateTime @default(now())
+  checkedIn Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  gym    Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  
+  @@unique([memberId, classId, date])
+  @@map("attendance")
+}
+
+model Bill {
+  id    String @id @default(cuid())
+  gymId String
+  
+  stripeInvoiceId String?
+  amount          Int // in cents
+  currency        String @default("usd")
+  status          String
+  
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  
+  // Usage tracking
+  activeStudents Int
+  overageAmount  Int @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  gym Gym @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  
+  @@map("bills")
+}
+
+enum SubscriptionTier {
+  STARTER
+  PRO
+  ELITE
+}
+
+enum Belt {
+  WHITE
+  BLUE
+  PURPLE
+  BROWN
+  BLACK
+}
+
+// Row Level Security will be implemented at the application level
+// All queries will be filtered by gymId based on the authenticated user's gym
