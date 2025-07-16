@@ -1,0 +1,20 @@
+# Simple frontend deployment using npm
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy frontend package.json
+COPY apps/frontend/package.json ./package.json
+
+# Install with npm instead of pnpm
+RUN npm install
+
+# Copy frontend source
+COPY apps/frontend/ ./
+
+# Build
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
