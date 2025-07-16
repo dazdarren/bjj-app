@@ -1,0 +1,22 @@
+FROM node:18-alpine
+
+RUN npm install -g pnpm
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json ./
+COPY ../../package.json ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../
+
+# Install dependencies
+RUN cd ../.. && pnpm install
+
+# Copy frontend code
+COPY . .
+
+# Build the frontend
+RUN pnpm build
+
+EXPOSE 3000
+
+CMD ["pnpm", "start"]
