@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy frontend package.json
 COPY apps/frontend/package.json ./package.json
 
-# Install with npm instead of pnpm
-RUN npm install
+# Install with npm using legacy peer deps to resolve conflicts
+RUN npm install --legacy-peer-deps
 
 # Copy frontend source
 COPY apps/frontend/ ./
